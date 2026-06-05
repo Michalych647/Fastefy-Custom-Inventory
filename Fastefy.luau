@@ -1,7 +1,6 @@
 if not game:IsLoaded() then
-    game.Loaded:Wait()
+	game.Loaded:Wait()
 end
-
 
 if getgenv().CustomInvLoaded then
 	return
@@ -18,6 +17,13 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local StarterGui = game:GetService("StarterGui")
 local Debris = game:GetService("Debris")
+
+local isMobile = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled and not UserInputService.MouseEnabled
+local slotCount = isMobile and 8 or 10
+local cellDim = isMobile and 58 or 75
+local txtNameSize = isMobile and 11 or 14
+local invW = isMobile and 395 or 520
+local invH = isMobile and 180 or 260
 
 local function createPrompt(titleText, descText, confirmText)
 	local bindable = Instance.new("BindableEvent")
@@ -108,19 +114,9 @@ local function createPrompt(titleText, descText, confirmText)
 	return bindable.Event:Wait()
 end
 
-local needsPrompt = false
-for _, s in ipairs({game:GetService("ReplicatedStorage"), game:GetService("ReplicatedFirst"), game:GetService("NetworkClient")}) do
-	if s:FindFirstChild("Satchel", true) then needsPrompt = true break end
-end
-if not needsPrompt then
-	local s, info = pcall(function() return MarketplaceService:GetProductInfo(game.PlaceId) end)
-	if s and info and string.find(string.lower(info.Name), "battleground") then
-		needsPrompt = true
-	end
-end
-
-if needsPrompt then
-	if not createPrompt("Execute This Script?", "This game is already have custom inventory, not recommended to loaded script", "Execute") then
+local isEnabled = StarterGui:GetCoreGuiEnabled(Enum.CoreGuiType.Backpack)
+if not isEnabled then
+	if not createPrompt("Execute This Script?", "This game already has a custom inventory, not recommended to load script", "Execute") then
 		getgenv().CustomInvLoaded = false
 		return
 	end
@@ -162,7 +158,7 @@ hotBarGrid.Name = "Grid"
 hotBarGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 hotBarGrid.VerticalAlignment = Enum.VerticalAlignment.Center
 hotBarGrid.SortOrder = Enum.SortOrder.LayoutOrder
-hotBarGrid.CellSize = UDim2.fromOffset(58, 58)
+hotBarGrid.CellSize = UDim2.fromOffset(cellDim, cellDim)
 hotBarGrid.CellPadding = UDim2.fromOffset(5, 0)
 hotBarGrid.Parent = hotBar
 
@@ -179,7 +175,7 @@ toolButton.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 toolButton.Size = UDim2.new(1, 0, 1, 0)
 
 local UICornerBtn = Instance.new("UICorner")
-UICornerBtn.CornerRadius = UDim.new(0.15, 0)
+UICornerBtn.CornerRadius = UDim.new(1, 0)
 UICornerBtn.Parent = toolButton
 
 local toolNumber = Instance.new("TextLabel")
@@ -199,7 +195,7 @@ toolName.Name = "toolName"
 toolName.ZIndex = 3
 toolName.BorderSizePixel = 0
 toolName.TextScaled = false
-toolName.TextSize = 11
+toolName.TextSize = txtNameSize
 toolName.TextTruncate = Enum.TextTruncate.AtEnd
 toolName.FontFace = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
 toolName.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -251,8 +247,8 @@ BackpackFrame.Parent = MainGui
 
 local invUI = Instance.new("Frame")
 invUI.Name = "Inventory"
-invUI.Size = UDim2.new(0, 395, 0, 180)
-invUI.Position = UDim2.new(0.5, -197, 1, -250)
+invUI.Size = UDim2.new(0, invW, 0, invH)
+invUI.Position = UDim2.new(0.5, -(invW/2), 1, -280)
 invUI.BackgroundTransparency = 0.3
 invUI.BackgroundColor3 = Color3.fromRGB(25, 27, 29)
 invUI.Visible = false
@@ -285,7 +281,7 @@ invGridFrame.Parent = invScroll
 local invGrid = Instance.new("UIGridLayout")
 invGrid.Name = "UIGridLayout"
 invGrid.SortOrder = Enum.SortOrder.LayoutOrder
-invGrid.CellSize = UDim2.fromOffset(58, 58)
+invGrid.CellSize = UDim2.fromOffset(cellDim, cellDim)
 invGrid.CellPadding = UDim2.fromOffset(6, 6)
 invGrid.Parent = invGridFrame
 
@@ -313,6 +309,7 @@ invSearchBox.Position = UDim2.new(0, 8, 0.5, 0)
 invSearchBox.AnchorPoint = Vector2.new(0, 0.5)
 invSearchBox.BackgroundTransparency = 1
 invSearchBox.Text = ""
+invSearchBox.ClearTextOnFocus = false
 invSearchBox.TextColor3 = Color3.fromRGB(255, 255, 255)
 invSearchBox.TextSize = 16
 invSearchBox.TextXAlignment = Enum.TextXAlignment.Left
@@ -403,7 +400,7 @@ IconImage.BackgroundTransparency = 1
 IconImage.Image = "rbxasset://textures/ui/TopBar/inventoryOff.png"
 IconImage.Parent = IconButton
 
-local inventoryHandler = {OBJECTS = {}, SETTINGS = {}, slotAmount = 8, SelectedObject = nil, lastToolInput = 0}
+local inventoryHandler = {OBJECTS = {}, SETTINGS = {}, slotAmount = slotCount, SelectedObject = nil, lastToolInput = 0}
 inventoryHandler.OBJECTS.HotBar = {}
 inventoryHandler.OBJECTS.Inventory = {}
 
@@ -419,18 +416,19 @@ SETTINGS.INVENTORY_KEYBIND = Enum.KeyCode.Backquote
 SETTINGS.SHOW_EMPTY_TOOL_FRAMES_IN_HOTBAR = false
 SETTINGS.SCROLL_HOTBAR_WITH_WHEEL = true
 SETTINGS.ALWAYS_SHOW_TOOL_NAME = false
-SETTINGS.CELL_SIZE = 58
+SETTINGS.CELL_SIZE = cellDim
 
 local EnumKeys = {
 	Enum.KeyCode.One, Enum.KeyCode.Two, Enum.KeyCode.Three,
 	Enum.KeyCode.Four, Enum.KeyCode.Five, Enum.KeyCode.Six,
-	Enum.KeyCode.Seven, Enum.KeyCode.Eight,
+	Enum.KeyCode.Seven, Enum.KeyCode.Eight, Enum.KeyCode.Nine, Enum.KeyCode.Zero
 }
 
 local toolObjectMetatable = {}
 toolObjectMetatable.__index = toolObjectMetatable
 
 local newToolsTracker = {}
+local layoutMemory = {}
 
 local function applySelectionHighlight(frame)
 	if not frame or not frame.Parent then return end
@@ -454,6 +452,22 @@ local function removeSelectionHighlight(frame)
 	local stroke = frame:FindFirstChild("SelectionStroke")
 	if stroke then
 		stroke:Destroy()
+	end
+end
+
+local function updateInvScrollSize()
+	local gridLayout = invGridFrame:FindFirstChildOfClass("UIGridLayout")
+	if not gridLayout then return end
+	local contentSize = gridLayout.AbsoluteContentSize
+	local scrollFrameAbsSize = invScroll.AbsoluteSize
+	local contentH = contentSize.Y
+	invGridFrame.Size = UDim2.new(1, -10, 0, contentH)
+	if contentH <= scrollFrameAbsSize.Y then
+		invScroll.CanvasSize = UDim2.new(0, 0, 0, 0)
+		invScroll.ScrollBarThickness = 0
+	else
+		invScroll.CanvasSize = UDim2.new(0, 0, 0, contentH)
+		invScroll.ScrollBarThickness = 8
 	end
 end
 
@@ -563,10 +577,12 @@ function inventoryHandler:SetSelected(object, isSelected)
 				return btn
 			end
 
-			createLabel("Name: " .. object.Name, 1, true, object.Name)
+			local nameLabel = createLabel("Name: " .. object.Name, 1, true, object.Name)
+
+			local tipLabel = nil
 			local tipText = object.Tool.ToolTip
 			if tipText and tipText ~= "" then
-				createLabel("Tip: " .. tipText, 2, true, tipText)
+				tipLabel = createLabel("Tip: " .. tipText, 2, true, tipText)
 			end
 
 			local toggleBtn = Instance.new("TextButton")
@@ -588,7 +604,71 @@ function inventoryHandler:SetSelected(object, isSelected)
 				toggleBtn.Text = "Enabled: " .. newState
 			end)
 
+			local function buildPath(tool)
+				local result = ""
+				pcall(function()
+					local parent = tool.Parent
+					local lp = Players.LocalPlayer
+					if parent == lp.Backpack then
+						result = 'game:GetService("Players").LocalPlayer.Backpack.' .. tool.Name
+					elseif parent == lp.Character then
+						result = 'game:GetService("Players").LocalPlayer.Character.' .. tool.Name
+					else
+						local raw = tool:GetFullName()
+						local parts = raw:split(".")
+						if #parts >= 2 then
+							local svcName = parts[2]
+							local rest = {}
+							for i = 3, #parts do rest[#rest+1] = parts[i] end
+							local svcCall = 'game:GetService("' .. svcName .. '")'
+							result = #rest > 0 and (svcCall .. "." .. table.concat(rest, ".")) or svcCall
+						else
+							result = raw
+						end
+					end
+				end)
+				return result
+			end
+
+			local fullPath = buildPath(object.Tool)
+			local copyPathBtn = createLabel("Copy Path", 4, true, fullPath)
+
 			object.ContextMenu = ctx
+
+			local ctxConns = {}
+			ctxConns[#ctxConns+1] = object.Tool:GetPropertyChangedSignal("Name"):Connect(function()
+				nameLabel.Text = "Name: " .. object.Tool.Name
+				local newPath = buildPath(object.Tool)
+				copyPathBtn.MouseButton1Click:Connect(function()
+					if setclipboard then pcall(setclipboard, newPath) end
+					TweenService:Create(copyPathBtn, TweenInfo.new(0.2), {TextColor3 = Color3.fromRGB(0, 255, 0)}):Play()
+					task.wait(0.2)
+					TweenService:Create(copyPathBtn, TweenInfo.new(0.3), {TextColor3 = Color3.fromRGB(255, 255, 255)}):Play()
+				end)
+			end)
+			ctxConns[#ctxConns+1] = object.Tool:GetPropertyChangedSignal("Enabled"):Connect(function()
+				toggleBtn.Text = "Enabled: " .. (object.Tool.Enabled and "On" or "Off")
+			end)
+			ctxConns[#ctxConns+1] = object.Tool:GetPropertyChangedSignal("ToolTip"):Connect(function()
+				local newTip = object.Tool.ToolTip
+				if tipLabel then
+					if newTip and newTip ~= "" then
+						tipLabel.Text = "Tip: " .. newTip
+						tipLabel.Visible = true
+					else
+						tipLabel.Visible = false
+					end
+				else
+					if newTip and newTip ~= "" then
+						tipLabel = createLabel("Tip: " .. newTip, 2, true, newTip)
+					end
+				end
+			end)
+			ctx.Destroying:Connect(function()
+				for _, c in ipairs(ctxConns) do
+					if typeof(c) == "RBXScriptConnection" then c:Disconnect() end
+				end
+			end)
 
 			task.spawn(function()
 				task.wait()
@@ -725,6 +805,15 @@ end
 
 function inventoryHandler:searchTool()
 	local searchText = invSearchBox.Text:lower()
+	local sel = inventoryHandler.SelectedObject
+	if sel and sel.ContextMenu then
+		if searchText == "" then
+			sel.ContextMenu.Visible = true
+		else
+			local matches = string.find(sel.Name:lower(), searchText) ~= nil
+			sel.ContextMenu.Visible = matches
+		end
+	end
 	for _, toolObject in pairs(self.OBJECTS.Inventory) do
 		if toolObject and toolObject.Frame and toolObject.Frame.Parent then
 			if searchText == "" then
@@ -759,6 +848,7 @@ function inventoryHandler:searchTool()
 			end
 		end
 	end
+	task.defer(updateInvScrollSize)
 end
 
 function inventoryHandler:lockSlots(unequipCurrentTool)
@@ -803,6 +893,18 @@ function inventoryHandler:newTool(tool)
 	if not tool:IsA("Tool") then return end
 	local obj = inventoryHandler:getObjectFromTool(tool)
 	if obj then return end
+	
+	local mem = layoutMemory[tool.Name]
+	if mem then
+		if mem.Parent == "HotBar" and not self.OBJECTS.HotBar[mem.Pos] then
+			inventoryHandler:addTool(tool, "HotBar", mem.Pos)
+			return
+		elseif mem.Parent == "Inventory" then
+			inventoryHandler:addTool(tool, "Inventory", mem.Pos)
+			return
+		end
+	end
+
 	local savedPos = tool:GetAttribute("position")
 	if savedPos and savedPos >= 1 and savedPos <= self.slotAmount and not self.OBJECTS.HotBar[savedPos] then
 		inventoryHandler:addTool(tool, "HotBar", savedPos)
@@ -854,12 +956,16 @@ function inventoryHandler:addTool(tool, parent, position)
 	else
 		self.OBJECTS.Inventory[tool] = object
 	end
+	
+	layoutMemory[tool.Name] = {Parent = parent, Pos = position}
+	
 	local function manageTool(_, inputState, inputObject)
 		if inputObject and inputObject.UserInputType ~= Enum.UserInputType.Keyboard and inputObject.UserInputType ~= Enum.UserInputType.Touch and inputObject.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
 		local character = player.Character
 		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 		if not humanoid or humanoid.Health <= 0 or not tool.Parent or inputState == Enum.UserInputState.End or self.slotsLocked then return end
 		if object:isEquipped() then
+			tool:SetAttribute("RealUnequip", tick())
 			humanoid:UnequipTools()
 			if inventoryHandler.SelectedObject ~= object then
 				frame.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
@@ -868,14 +974,26 @@ function inventoryHandler:addTool(tool, parent, position)
 			end
 			inventoryHandler.currentlyEquipped = nil
 		elseif tool.Enabled then
-			humanoid:EquipTool(tool)
 			if inventoryHandler.currentlyEquipped and inventoryHandler.currentlyEquipped.Parent then
+				local eqToolObj
+				for _, o in pairs(inventoryHandler.OBJECTS.HotBar) do
+					if o.Frame == inventoryHandler.currentlyEquipped then eqToolObj = o.Tool break end
+				end
+				if not eqToolObj then
+					for _, o in pairs(inventoryHandler.OBJECTS.Inventory) do
+						if o.Frame == inventoryHandler.currentlyEquipped then eqToolObj = o.Tool break end
+					end
+				end
+				if eqToolObj then eqToolObj:SetAttribute("RealUnequip", tick()) end
+				
 				if inventoryHandler.SelectedObject == nil or inventoryHandler.SelectedObject.Frame ~= inventoryHandler.currentlyEquipped then
 					inventoryHandler.currentlyEquipped.BackgroundColor3 = SETTINGS.DEFAULT_COLOR
 					inventoryHandler.currentlyEquipped.BackgroundTransparency = 0.15
 					inventoryHandler.currentlyEquipped.Image = SETTINGS.DEFAULT_IMAGEID
 				end
 			end
+			tool:SetAttribute("RealUnequip", tick())
+			humanoid:EquipTool(tool)
 			inventoryHandler.currentlyEquipped = frame
 			frame.BackgroundColor3 = SETTINGS.EQUIPPED_COLOR
 			frame.BackgroundTransparency = 0.05
@@ -1010,10 +1128,13 @@ function inventoryHandler:addTool(tool, parent, position)
 					else
 						inventoryHandler:addTool(myTool, "Inventory", theirOldPos)
 					end
+					if object.Tool then layoutMemory[object.Tool.Name] = {Parent = theirOldParent, Pos = theirOldPos} end
+					if selObj.Tool then layoutMemory[selObj.Tool.Name] = {Parent = myOldParent, Pos = myOldPos} end
 					inventoryHandler:searchTool()
 					if (myOldParent == "HotBar" or theirOldParent == "HotBar") then
 						showSlotsSignal:Fire()
 					end
+					task.defer(updateInvScrollSize)
 				end
 			else
 				manageTool(nil, Enum.UserInputState.Begin, input)
@@ -1029,9 +1150,10 @@ function inventoryHandler:addTool(tool, parent, position)
 			end
 		end
 	end)
-	if parent == "HotBar" and position then
+	if parent == "HotBar" and position and EnumKeys[position] then
 		ContextActionService:BindAction(position .. "hotBar", manageTool, false, EnumKeys[position])
 	end
+	task.defer(updateInvScrollSize)
 end
 
 local function updateGridCellSize()
@@ -1046,6 +1168,7 @@ end
 
 local function showSlots()
 	updateGridCellSize()
+	local searchText = invSearchBox.Text:lower()
 	for index = 1, inventoryHandler.slotAmount do
 		local toolObject = inventoryHandler.OBJECTS.HotBar[index]
 		local existingFrame = hotBar:FindFirstChild(tostring(index))
@@ -1075,11 +1198,20 @@ local function showSlots()
 									showSlots()
 								end
 								inventoryHandler:searchTool()
+								task.defer(updateInvScrollSize)
 							end
 						end
 					end)
-				else
-					existingFrame.Visible = true
+				end
+				if existingFrame or hotBar:FindFirstChild(tostring(index)) then
+					local f = hotBar:FindFirstChild(tostring(index))
+					if f then
+						if searchText == "" then
+							f.Visible = true
+						else
+							f.Visible = false
+						end
+					end
 				end
 			else
 				if existingFrame then
@@ -1091,14 +1223,21 @@ local function showSlots()
 				existingFrame:Destroy()
 			end
 			if toolObject.Frame and toolObject.Frame.Parent then
-				toolObject.Frame.Visible = true
+				if searchText == "" then
+					toolObject.Frame.Visible = true
+				else
+					toolObject.Frame.Visible = string.find(toolObject.Name:lower(), searchText) ~= nil
+				end
 			end
 		end
 	end
 	updateTopbarInvPosition()
+	task.defer(updateInvScrollSize)
 end
 
 showSlotsSignal.Event:Connect(showSlots)
+
+invGrid:GetPropertyChangedSignal("AbsoluteContentSize"):Connect(updateInvScrollSize)
 
 invScroll.InputBegan:Connect(function(input)
 	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -1111,6 +1250,7 @@ invScroll.InputBegan:Connect(function(input)
 			inventoryHandler:addTool(toolToMove, "Inventory")
 			showSlots()
 			inventoryHandler:searchTool()
+			task.defer(updateInvScrollSize)
 		end
 	end
 end)
@@ -1123,13 +1263,22 @@ local function updateButtonAppearance()
 		IconButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
 		IconOverlay.Visible = true
 		invUI.Visible = true
+		local sel = inventoryHandler.SelectedObject
+		if sel and sel.Parent == "Inventory" and sel.ContextMenu then
+			sel.ContextMenu.Visible = true
+		end
 	else
 		IconImage.Image = "rbxasset://textures/ui/TopBar/inventoryOff.png"
 		IconButton.BackgroundColor3 = Color3.fromRGB(18, 18, 21)
 		IconOverlay.Visible = false
 		invUI.Visible = false
+		local sel = inventoryHandler.SelectedObject
+		if sel and sel.Parent == "Inventory" and sel.ContextMenu then
+			sel.ContextMenu.Visible = false
+		end
 	end
 	updateTopbarInvPosition()
+	task.defer(updateInvScrollSize)
 end
 
 local function manageInventory(_, inputState)
@@ -1137,9 +1286,6 @@ local function manageInventory(_, inputState)
 		isToggled = not isToggled
 		updateButtonAppearance()
 		inventoryHandler:removeCurrentDescription()
-		if inventoryHandler.SelectedObject then
-			inventoryHandler:SetSelected(inventoryHandler.SelectedObject, false)
-		end
 		showSlots()
 		inventoryHandler:searchTool()
 	end
@@ -1163,7 +1309,6 @@ end
 
 local function reloadInventory(character)
 	inventoryHandler.currentlyEquipped = nil
-	inventoryHandler.SelectedObject = nil
 	for _, obj in pairs(inventoryHandler.OBJECTS.HotBar) do
 		if obj then obj:DisconnectAll() end
 	end
@@ -1193,7 +1338,21 @@ local function reloadInventory(character)
 	end
 	backpack.ChildAdded:Connect(newTool)
 	character.ChildAdded:Connect(newTool)
+	
+	character.ChildRemoved:Connect(function(child)
+		if child:IsA("Tool") and child.Parent == player:FindFirstChild("Backpack") then
+			local lastRU = child:GetAttribute("RealUnequip") or 0
+			if tick() - lastRU > 0.5 then
+				local hum = character:FindFirstChildOfClass("Humanoid")
+				if hum and hum.Health > 0 then
+					hum:EquipTool(child)
+				end
+			end
+		end
+	end)
+	
 	showSlots()
+	task.defer(updateInvScrollSize)
 end
 
 local function updateHudPosition()
@@ -1214,9 +1373,6 @@ ClickRegion.InputBegan:Connect(function(input)
 		isToggled = not isToggled
 		updateButtonAppearance()
 		inventoryHandler:removeCurrentDescription()
-		if inventoryHandler.SelectedObject then
-			inventoryHandler:SetSelected(inventoryHandler.SelectedObject, false)
-		end
 		showSlots()
 		inventoryHandler:searchTool()
 	end
@@ -1323,6 +1479,7 @@ UserInputService.InputChanged:Connect(function(input)
 		while iterations < inventoryHandler.slotAmount do
 			local toolObject = inventoryHandler.OBJECTS.HotBar[targetPos]
 			if toolObject then
+				toolObject.Tool:SetAttribute("RealUnequip", tick())
 				humanoid:EquipTool(toolObject.Tool)
 				break
 			end
@@ -1371,6 +1528,7 @@ RunService.Stepped:Connect(function()
 	for tool, addedTime in pairs(pendingNewTools) do
 		if now - addedTime <= 0.3 then
 			if character and tool.Parent == character and humanoid then
+				tool:SetAttribute("RealUnequip", tick())
 				humanoid:UnequipTools()
 			end
 		else
